@@ -1,0 +1,59 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+
+# Required so the job can request an OIDC token from GitHub
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-west-3
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node (needed for the CDK CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.0.0"
+
+      # Exchanges GitHub's OIDC token for temporary AWS credentials.
+      # No long-lived AWS keys are stored anywhere.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+
+      - name: Test AWS Credentials
+        run: aws sts get-caller-identity
+
+      - name: Install Lambda runtime dependencies into app/
+        run: pip install -r app/requirements.txt -t app/ --upgrade
+
+      - name: Install CDK CLI and CDK Python dependencies
+        run: |
+          npm install -g aws-cdk
+          pip install -r cdk/requirements.txt
+
+      - name: CDK deploy
+        working-directory: cdk
+        run: cdk deploy --require-approval never --outputs-file cdk-outputs.json
+
+      - name: Print the Function URL
+        working-directory: cdk
+        run: cat cdk-outputs.json
+
+#EOF
