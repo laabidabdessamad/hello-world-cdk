@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Dependencies installed into app/ for Lambda packaging (installed fresh each deploy)
+app/*
+!app/main.py
+!app/requirements.txt
+
+# CDK
+cdk/cdk.out/
+cdk/cdk-outputs.json
+cdk/.venv/
